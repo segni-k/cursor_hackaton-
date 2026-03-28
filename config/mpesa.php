@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Safaricom Daraja (M-Pesa) — used when config('endode.payments.mode') is sandbox or live.
+ * Set ENDODE_PAYMENTS_MODE=mock in .env for local/demo without calling Safaricom.
+ */
 return [
     'base_url' => env('MPESA_BASE_URL', 'https://sandbox.safaricom.co.ke'),
     'consumer_key' => env('MPESA_CONSUMER_KEY', ''),

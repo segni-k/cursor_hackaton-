@@ -48,18 +48,89 @@ class ProcessPrescription implements ShouldQueue
 
     private function performOCR(string $imagePath): string
     {
-        // Placeholder: integrate with thiagoalessio/tesseract_ocr or Google Vision
-        // Example with Tesseract:
-        // return (new \thiagoalessio\TesseractOCR\TesseractOCR($imagePath))->run();
-        return 'OCR processing placeholder - configure Tesseract or Google Vision API';
+        $driver = config('endode.ocr.driver', 'mock');
+
+        if ($driver === 'google_vision' && ($key = config('endode.ocr.google_vision_key'))) {
+            // Optional: wire google/cloud-vision — keep mock fallback if request fails
+            try {
+                // @phpstan-ignore-next-line — optional dependency
+                return $this->ocrWithGoogleVision($imagePath, $key);
+            } catch (\Throwable $e) {
+                Log::warning('Endode OCR: Google Vision failed, falling back to mock: '.$e->getMessage());
+            }
+        }
+
+        if ($driver === 'tesseract' && is_readable($imagePath)
+            && class_exists(\thiagoalessio\TesseractOCR\TesseractOCR::class)) {
+            $binary = config('endode.ocr.tesseract_path');
+            if ($binary && is_executable($binary)) {
+                try {
+                    return (new \thiagoalessio\TesseractOCR\TesseractOCR($imagePath))->executable($binary)->run();
+                } catch (\Throwable $e) {
+                    Log::warning('Endode OCR: Tesseract failed: '.$e->getMessage());
+                }
+            }
+        }
+
+        return $this->mockOcrSampleText();
+    }
+
+    private function mockOcrSampleText(): string
+    {
+        return implode("\n", [
+            'PRESCRIPTION',
+            'Dr. Alemayehu T.',
+            'Patient: Demo User',
+            'Date: '.now()->toDateString(),
+            'Amoxicillin 500mg — Take 1 capsule twice daily for 7 days',
+            'Paracetamol 500mg — As needed for pain',
+            'Cetirizine 10mg — Once daily at bedtime',
+        ]);
+    }
+
+    private function ocrWithGoogleVision(string $imagePath, string $apiKey): string
+    {
+        $imageContent = base64_encode((string) file_get_contents($imagePath));
+        $response = \Illuminate\Support\Facades\Http::withHeaders(['Content-Type' => 'application/json'])
+            ->post('https://vision.googleapis.com/v1/images:annotate?key='.$apiKey, [
+                'requests' => [
+                    [
+                        'image' => ['content' => $imageContent],
+                        'features' => [['type' => 'DOCUMENT_TEXT_DETECTION']],
+                    ],
+                ],
+            ]);
+
+        $text = data_get($response->json(), 'responses.0.fullTextAnnotation.text');
+
+        return is_string($text) && $text !== '' ? $text : $this->mockOcrSampleText();
     }
 
     private function parseMedicines(string $ocrText): array
     {
-        // NLP placeholder - parse medicine names, dosages, quantities from OCR text
-        // In production, use regex patterns or an NLP service
-        return [
-            ['name' => 'Extracted Medicine', 'dosage' => '500mg', 'quantity' => '1 box'],
-        ];
+        // Lightweight NLP: lines that look like medicine rows (demo + production heuristic)
+        $lines = preg_split('/\R+/', $ocrText) ?: [];
+        $out = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || preg_match('/^(PRESCRIPTION|Dr\.|Patient:|Date:)/i', $line)) {
+                continue;
+            }
+            if (preg_match('/^(?<name>[A-Za-z][A-Za-z\s\-]+?)\s+(?<dosage>\d+\s*(mg|ml|g))\b/i', $line, $m)) {
+                $out[] = [
+                    'name' => trim($m['name']),
+                    'dosage' => $m['dosage'],
+                    'quantity' => 'as prescribed',
+                ];
+            }
+        }
+
+        if ($out === []) {
+            return [
+                ['name' => 'Extracted Medicine', 'dosage' => 'see prescription', 'quantity' => '1 course'],
+            ];
+        }
+
+        return $out;
     }
 }

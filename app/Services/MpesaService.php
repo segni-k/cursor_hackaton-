@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Payment;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class MpesaService
 {
@@ -24,6 +27,44 @@ class MpesaService
         $this->callbackUrl = config('mpesa.callback_url', '');
     }
 
+    /**
+     * Demo/local mode: no HTTP to Safaricom — uses ENDODE_PAYMENTS_MODE=mock in .env.
+     */
+    public function isMockMode(): bool
+    {
+        return config('endode.payments.mode', 'mock') === 'mock';
+    }
+
+    /**
+     * Apply escrow completion for mock STK (mirrors successful Daraja callback).
+     */
+    public function applyMockEscrow(Payment $payment): void
+    {
+        if (! $this->isMockMode()) {
+            return;
+        }
+
+        $id = (string) ($payment->mpesa_transaction_id ?? '');
+        if ($id === '' || ! str_starts_with($id, 'MOCK-')) {
+            return;
+        }
+
+        $receipt = 'MOCK-'.strtoupper(Str::random(10));
+
+        $payment->update([
+            'status' => 'escrowed',
+            'mpesa_receipt_number' => $receipt,
+            'paid_at' => now(),
+        ]);
+
+        $payment->order->update(['status' => 'confirmed']);
+
+        AuditService::log('payment_escrowed', $payment, [
+            'simulated' => true,
+            'product' => config('endode.product.title'),
+        ]);
+    }
+
     public function getAccessToken(): ?string
     {
         try {
@@ -39,6 +80,14 @@ class MpesaService
 
     public function initiateStkPush(string $phone, float $amount, string $reference, string $description = 'Payment'): array
     {
+        if ($this->isMockMode()) {
+            return [
+                'success' => true,
+                'checkout_request_id' => 'MOCK-'.Str::uuid()->toString(),
+                'merchant_request_id' => 'MOCK-MR-'.strtoupper(Str::random(12)),
+            ];
+        }
+
         $token = $this->getAccessToken();
         if (!$token) {
             return ['success' => false, 'message' => 'Failed to get access token'];
@@ -81,6 +130,14 @@ class MpesaService
 
     public function checkTransactionStatus(string $checkoutRequestId): array
     {
+        if ($this->isMockMode() && str_starts_with($checkoutRequestId, 'MOCK-')) {
+            return [
+                'ResultCode' => 0,
+                'ResultDesc' => 'The service request is processed successfully.',
+                'success' => true,
+            ];
+        }
+
         $token = $this->getAccessToken();
         if (!$token) {
             return ['success' => false, 'message' => 'Failed to get access token'];

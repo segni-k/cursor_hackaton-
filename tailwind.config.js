@@ -15,6 +15,7 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                display: ['"Plus Jakarta Sans"', 'Figtree', ...defaultTheme.fontFamily.sans],
             },
             colors: {
                 endode: {
@@ -37,6 +38,12 @@ export default {
                 'slide-down': 'slideDown 0.3s ease-out',
                 'scale-in': 'scaleIn 0.2s ease-out',
                 'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
+                mesh: 'mesh 22s ease-in-out infinite',
+                shimmer: 'shimmer 8s linear infinite',
+            },
+            backgroundSize: {
+                'grid-24': '24px 24px',
+                'grid-32': '32px 32px',
             },
             keyframes: {
                 fadeIn: {
@@ -58,6 +65,15 @@ export default {
                 pulseSoft: {
                     '0%, 100%': { opacity: '1' },
                     '50%': { opacity: '0.7' },
+                },
+                mesh: {
+                    '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+                    '33%': { transform: 'translate(8%, -6%) scale(1.06)' },
+                    '66%': { transform: 'translate(-6%, 4%) scale(0.96)' },
+                },
+                shimmer: {
+                    '0%': { backgroundPosition: '200% 0' },
+                    '100%': { backgroundPosition: '-200% 0' },
                 },
             },
         },
