@@ -1,0 +1,2 @@
+# cursor_hackaton-
+thinking 
