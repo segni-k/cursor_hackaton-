@@ -1,3 +1,27 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root {
+        --color-endode: #10b981;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply inline-flex items-center justify-center px-4 py-2 bg-endode-600 border border-transparent rounded-lg font-semibold text-sm text-white tracking-wide hover:bg-endode-700 focus:bg-endode-700 active:bg-endode-800 focus:outline-none focus:ring-2 focus:ring-endode-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all duration-200;
+    }
+    .btn-secondary {
+        @apply inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg font-semibold text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-endode-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all duration-200;
+    }
+    .btn-danger {
+        @apply inline-flex items-center justify-center px-4 py-2 bg-red-600 border border-transparent rounded-lg font-semibold text-sm text-white hover:bg-red-700 active:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all duration-200;
+    }
+    .card {
+        @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden;
+    }
+    .input-field {
+        @apply border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 focus:border-endode-500 dark:focus:border-endode-600 focus:ring-endode-500 dark:focus:ring-endode-600 rounded-lg shadow-sm;
+    }
+}
